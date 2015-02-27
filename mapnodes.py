@@ -20,23 +20,23 @@ if __name__ == '__main__':
     nodes = scrape(NODESJSON)
 
     if nodes:
-        online = 0
-        nonclient = 0
+        onlinenodes = 0
+        onlineclients = 0
 
         for node in nodes['nodes']:
-            if node['flags']['online']:
-                online += 1
-                if not node['flags']['client']:
-                    nonclient += 1
+            if (node['flags']['online'] and not node['system']['role'] == 'gateway' and not node['system']['role'] == 'service'):
+                onlinenodes += 1
+            if node['clientcount']:
+                onlineclients += node['clientcount']
 
         now = datetime.now().strftime('%H:%M %d.%m.%Y')
-        resultmsg = 'Status: online: %d (%d Router, %d Teilnehmer) %s' %(online, nonclient, online-nonclient, now)
+        resultmsg = 'Online-Status: %d Knoten, %d Teilnehmer %s' %(onlinenodes, onlineclients, now)
         if len(argv) > 1:
             print(resultmsg)
         else:
             loader = Loader(FFAPIJSON)
-            if nonclient != int(loader.find(['state', 'nodes'])):
-                loader.set(['state', 'nodes'], nonclient)
+            if onlinenodes != int(loader.find(['state', 'nodes'])):
+                loader.set(['state', 'nodes'], onlinenodes)
                 loader.dump(overwrite=True)
 
             if TWEETRESULT:
