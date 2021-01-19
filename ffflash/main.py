@@ -1,5 +1,6 @@
 from ffflash.inc.nodelist import handle_nodelist
 from ffflash.inc.sidecars import handle_sidecars
+from ffflash.inc.meshviewer import handle_meshviewer
 from ffflash.info import info
 from ffflash.lib.api import FFApi
 from ffflash.lib.args import parsed_args
@@ -65,8 +66,9 @@ class FFFlash:
                 'api': self.location,
                 'sidecars': self.args.sidecars,
                 'nodelist': self.args.nodelist,
+                'meshviewer': self.args.meshviewer,
                 'rankfile': all([
-                    self.args.nodelist, self.args.rankfile
+                    (self.args.meshviewer or self.args.nodelist), self.args.rankfile
                 ]),
             }.get(name, False)
         ])
@@ -115,6 +117,11 @@ def run(argv=None):
     if ff.access_for('nodelist'):
         modified.append(
             handle_nodelist(ff)
+        )
+
+    if ff.access_for('meshviewer'):
+        modified.append(
+            handle_meshviewer(ff)
         )
 
     if ff.args.dry:

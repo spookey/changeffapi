@@ -30,6 +30,10 @@ def parsed_args(argv=None):
         help='URL or location to map\'s nodelist.json, updates nodes count'
     )
     parser.add_argument(
+        '-m', '--meshviewer', action='store',
+        help='URL or location to map\'s meshviewer.json, updates nodes count'
+    )
+    parser.add_argument(
         '-r', '--rankfile', action='store',
         help='location to rankfile.json, for node statistics and credits'
     )
@@ -61,11 +65,15 @@ def parsed_args(argv=None):
         '-v', '--verbose', action='store_true',
         help='show verbose output'
     )
+    parser.add_argument(
+        '-D', '--domain', action='store',
+        help='filter by subcommunity'
+    )
 
     args = parser.parse_args(
         argv if (argv is not None) else _argv[1:]
     )
 
-    if args.rankfile and not args.nodelist:
-        parser.error('argument -r/--rankfile: needs a -n/--nodelist')
+    if args.rankfile and not (args.nodelist or args.meshviewer):
+        parser.error('argument -r/--rankfile: needs a -n/--nodelist or a -m/--meshviewer')
     return args
