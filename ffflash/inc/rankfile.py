@@ -61,7 +61,7 @@ def _rankfile_load(ff):
     return rankfile, ranks
 
 
-def _rankfile_score(ff, ranks, nodelist):
+def _rankfile_score_nodelist(ff, ranks, nodelist):
     '''
     Do some number crunching.
 
@@ -116,6 +116,60 @@ def _rankfile_score(ff, ranks, nodelist):
     return ranks
 
 
+def _rankfile_score_meshviewer(ff, ranks, nodes):
+    '''
+    Do some number crunching.
+
+    :param ff: running :class:`ffflash.main.FFFlash` instance
+    :param ranks: rankfile content from :meth:`_rankfile_load`,
+        should contain a list of dictionaries at the key *nodes*
+    :param nodelist: nodelist from
+        :meth:`ffflash.inc.nodelist._nodelist_fetch`, should contain a
+        list of dictionaries at the key *nodes*
+    :return: ``ranks`` with new scores, sorted by score
+    '''
+    if not ff.access_for('rankfile'):
+        return False
+    if not all([
+        ranks, isinstance(ranks, dict), ranks and 'nodes' in ranks,
+        nodes, isinstance(nodes, list)
+    ]):
+        return ff.log('wrong input data passed', level=False)
+
+    res = []
+    exist = dict(
+        (node.get('id'), node.get('score')) for node in ranks.get('nodes', [])
+    )
+    for node in nodes:
+        nid = node.get('node_id')
+        if not nid:
+            ff.log('node without id {}'.format(node))
+            continue
+        nr = {
+            'id': nid,
+            'score': exist.get(nid, ff.args.rankwelcome),
+            'name': node.get('hostname')
+        }
+
+        if node.get('location', False):
+            nr['score'] += ff.args.rankposition
+        if node.get('is_online', False):
+            nr['score'] += ff.args.rankonline
+            nr['online'] = True
+            cl = node.get('clients', 0)
+            nr['score'] += (ff.args.rankclients * cl)
+            nr['clients'] = cl
+        else:
+            nr['score'] -= ff.args.rankoffline
+            nr['online'] = False
+            nr['clients'] = 0
+        if nr['score'] > 0:
+            res.append(nr)
+
+    ranks['nodes'] = list(sorted(res, key=itemgetter('score'), reverse=True))
+    ff.log('scored {} nodes for rankfile'.format(len(ranks.get('nodes'))))
+    return ranks
+
 def _rankfile_dump(ff, rankfile, ranks):
     '''
     Store ranks in ``rankfile``. Also sets a timestamp and writes the
@@ -157,14 +211,19 @@ def handle_rankfile(ff, nodelist):
     '''
     if not ff.access_for('rankfile'):
         return False
-    if not nodelist or not isinstance(nodelist, dict):
-        return False
 
     rankfile, ranks = _rankfile_load(ff)
     if not all([rankfile, ranks]):
         return False
 
-    ranks = _rankfile_score(ff, ranks, nodelist)
+    if ff.access_for('meshviewer'):
+        if not nodelist or not isinstance(nodelist, list):
+            return False
+        ranks = _rankfile_score_meshviewer(ff, ranks, nodelist)
+    else:
+        if not nodelist or not isinstance(nodelist, dict):
+            return False
+        ranks = _rankfile_score_nodelist(ff, ranks, nodelist)
     if not ranks:
         return False
 
